@@ -32,11 +32,11 @@ class Handler(SimpleHTTPRequestHandler):
     def do_HEAD(self):
         if self.authorized(): return super().do_HEAD()
     def do_GET(self):
-        if self.path=='/healthz': return self.send_json(200,{'ok':True})
+        if urlsplit(self.path).path=='/healthz': return self.send_json(200,{'ok':True})
         if not self.authorized(): return
-        if self.path=='/api/status':
+        if urlsplit(self.path).path=='/api/status':
             photos=sorted(p.name for p in (ROOT/'avatars').glob('*.webp') if re.fullmatch(r'\d{4,6}\.webp',p.name))
-            return self.send_json(200,{'configured':bool(KEY),'model':MODEL,'avatars':photos,'version':'1.8'})
+            return self.send_json(200,{'configured':bool(KEY),'model':MODEL,'avatars':photos,'version':'1.9'})
         return super().do_GET()
     def do_POST(self):
         if not self.authorized(): return
@@ -60,15 +60,19 @@ class Handler(SimpleHTTPRequestHandler):
             if isinstance(im,str) and im.startswith('data:image/jpeg;base64,'): content.append({'type':'input_image','image_url':im,'detail':'low'})
             body={'model':MODEL,'store':False,'reasoning':{'effort':'none' if MODEL=='grok-4.3' else 'low'},'max_output_tokens':300,'input':[{'role':'developer','content':instruction},{'role':'user','content':content}]}
             req=urllib.request.Request('https://api.x.ai/v1/responses',data=json.dumps(body).encode(),headers={'Authorization':'Bearer '+KEY,'Content-Type':'application/json'},method='POST')
-            with urllib.request.urlopen(req,timeout=25) as r: result=json.load(r)
+            t0=time.monotonic()
+            with urllib.request.urlopen(req,timeout=18) as r: result=json.load(r)
             raw=''.join(c.get('text','') for o in result.get('output',[]) for c in o.get('content',[]) if c.get('type')=='output_text')
             start=raw.find('['); end=raw.rfind(']'); arr=json.loads(raw[start:end+1]); comments=[s[:100] for s in arr if isinstance(s,str) and s.strip()][:8]
             if not comments: raise ValueError('No comments')
+            print(f'xAI OK {time.monotonic()-t0:.2f}s, image={bool(im)}, model={MODEL}',flush=True)
             return self.send_json(200,{'comments':comments})
         except urllib.error.HTTPError as e:
             print(f'xAI HTTP {e.code}',flush=True)
             return self.send_json(502,{'error':f'xAI HTTP {e.code}'})
-        except Exception: return self.send_json(502,{'error':'Réponse IA indisponible'})
+        except Exception as e:
+            print(f'xAI/traitement : {type(e).__name__}',flush=True)
+            return self.send_json(502,{'error':'Réponse IA indisponible ou délai dépassé'})
         finally: ACTIVE.release()
 if __name__=='__main__':
     p=argparse.ArgumentParser(); p.add_argument('--port',type=int,default=int(os.environ.get('PORT','8765'))); p.add_argument('--host',default='0.0.0.0' if os.environ.get('RENDER') else '127.0.0.1'); p.add_argument('--cert'); p.add_argument('--key'); a=p.parse_args()
@@ -77,5 +81,5 @@ if __name__=='__main__':
     s=ThreadingHTTPServer((a.host,a.port),Handler)
     if a.cert:
         ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);ctx.load_cert_chain(a.cert,a.key);s.socket=ctx.wrap_socket(s.socket,server_side=True)
-    print(f"Ismael Live V1.8 : {'https' if a.cert else 'http'}://{a.host}:{a.port} | Grok {'configuré' if KEY else 'désactivé'}",flush=True)
+    print(f"Ismael Live V1.9 : {'https' if a.cert else 'http'}://{a.host}:{a.port} | Grok {'configuré' if KEY else 'désactivé'}",flush=True)
     s.serve_forever()

@@ -3,7 +3,8 @@ services:
     name: ismael-live
     runtime: python
     plan: free
-    buildCommand: python -m py_compile server.py
+    buildCommand: >-
+      python -m py_compile server.py && (python3 install_avatars.py || echo "Portraits indisponibles : avatars illustrés actifs")
     startCommand: python server.py --host 0.0.0.0 --port $PORT
     healthCheckPath: /healthz
     envVars:

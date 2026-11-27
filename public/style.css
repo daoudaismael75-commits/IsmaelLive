@@ -21,3 +21,6 @@ html,body{width:100%;overflow:hidden;overscroll-behavior:none}#phone{height:100v
 
 /* V1.8: foreground always uncropped, no scale except front-camera mirror. */
 #camera,#camera.uncropped{object-fit:contain!important;object-position:center!important;transform:none!important;background:transparent!important}#camera.front{transform:scaleX(-1)!important}#cameraBackdrop{object-fit:cover;filter:blur(32px) brightness(.55);transform:none}#cameraBackdrop.front{transform:scaleX(-1)}.liveBadge small{font-size:8px;letter-spacing:.02em}
+
+/* V1.9: soft peripheral fill, foreground shows the complete camera frame. */
+#cameraBackdrop{filter:blur(44px) brightness(.84);transform:scale(1.08)}#cameraBackdrop.front{transform:scale(-1.08,1.08)}#camera,#camera.uncropped{object-fit:contain!important;background:transparent!important}#shade{background:linear-gradient(180deg,#0006 0%,transparent 24%,transparent 49%,#0002 65%,#0009 100%)}#side [hidden]{display:none!important}#phone:fullscreen{max-width:none;width:100%;height:100%}#testStatus{overflow-wrap:anywhere}#testGrok:disabled{opacity:.55}#lens{width:100%}#cameraBackdrop[hidden]{display:none}
